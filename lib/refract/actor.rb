@@ -12,6 +12,7 @@ class Actor
     callcc { |cc| @cc = cc; return }
 
     fail "not attached to a scheduler" unless @scheduler
+    fail "reactor not running" unless EM.reactor_running?
     yield self
 
     @cc = nil

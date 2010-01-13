@@ -1,4 +1,6 @@
+require 'rubygems'
 require 'test/unit'
+require 'eventmachine'
 require 'refract'
 
 class BasicTest < Test::Unit::TestCase
@@ -12,11 +14,13 @@ class BasicTest < Test::Unit::TestCase
       received = true
     end
 
-    receiver << expected_msg
-
     sched = Refract::Scheduler.new
     sched << receiver
-    sched.run
+
+    EM.run_block do
+      receiver << expected_msg
+      sched.run
+    end
 
     assert received
   end
@@ -41,8 +45,10 @@ class BasicTest < Test::Unit::TestCase
       sched << a[i]
     end
 
-    a[0] << initial_msg
-    sched.run
+    EM.run_block do
+      a[0] << initial_msg
+      sched.run
+    end
 
     assert_equal 38, c
   end
@@ -54,9 +60,13 @@ class BasicTest < Test::Unit::TestCase
     end
     sched = Refract::Scheduler.new
     sched << a
-    sched.run
-    a << :foo
-    sched.run
+
+    EM.run_block do
+      sched.run
+      a << :foo
+      sched.run
+    end
+
     assert_equal :foo, got
   end
 
@@ -87,12 +97,14 @@ class BasicTest < Test::Unit::TestCase
       assert_equal expect, got
     end
 
-    sendit[:foo, :foo]
-    sendit[:bar, :bar]
-    sendit[1, :bar]
-    sendit[:baz, :baz]
-    sendit['string', :baz]
-    sendit[:boo, :boo]
-    sendit[true, :done]
+    EM.run_block do
+      sendit[:foo, :foo]
+      sendit[:bar, :bar]
+      sendit[1, :bar]
+      sendit[:baz, :baz]
+      sendit['string', :baz]
+      sendit[:boo, :boo]
+      sendit[true, :done]
+    end
   end
 end
