@@ -10,7 +10,7 @@ class Scheduler
   end
 
   def << actor
-    l :runqueue_insert, actor
+    l :scheduler, :<<, actor
     actor.scheduler = self
     @runqueue << actor
   end

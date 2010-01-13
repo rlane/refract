@@ -23,7 +23,7 @@ class Mailbox
     while true
       msg_index, matcher, action = filter.apply @messages
       if msg_index
-        l :received, @actor, matcher, @messages[msg_index]
+        l :actor, @actor, :received, matcher, @messages[msg_index]
         return action[@messages.delete_at(msg_index)]
       else
         @sleeping = true

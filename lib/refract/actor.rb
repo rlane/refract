@@ -3,6 +3,7 @@ module Refract
 class Actor
   include Refract::Logging
   attr_accessor :scheduler
+  attr_reader :name
 
   def initialize name
     @mailbox = Refract::Mailbox.new self
@@ -22,37 +23,33 @@ class Actor
   end
 
   def yield
-    l :yield, self
+    l :actor, self, :yield
     @scheduler << self
     switch_out
   end
 
   def resume
-    l :resume, self
+    l :actor, self, :resume
     @cc.call
   end
 
   def sleep
-    l :sleep, self
+    l :actor, self, :sleep
     switch_out
   end
 
   def wakeup
-    l :wakeup, self
+    l :actor, self, :wakeup
     @scheduler << self
   end
 
   def << msg
-    l :send, self, msg
+    l :actor, self, :<<, msg
     @mailbox << msg
   end
 
   def receive default_matcher=Object, &block
     @mailbox.receive(default_matcher, &block)
-  end
-
-  def inspect
-    "<#{@name}>"
   end
 end
 
