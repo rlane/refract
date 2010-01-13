@@ -19,10 +19,12 @@ class Mailbox
 
   def receive default_matcher, &block
     block ||= lambda { |f| f.when(default_matcher) { |x| x } }
-    filter = Refract::Filter.new(&block)
+    filter = Refract::Filter.new(@actor, &block)
     while true
       msg_index, matcher, action = filter.apply @messages
-      if msg_index
+      if msg_index == :timeout
+        return action[]
+      elsif msg_index
         l :actor, @actor, :received, matcher, @messages[msg_index]
         return action[@messages.delete_at(msg_index)]
       else
@@ -34,8 +36,11 @@ class Mailbox
 end
 
 class Filter
-  def initialize
+  def initialize actor
+    @actor = actor
     @branches = []
+    @deadline = nil
+    @deadline_action = nil
     yield self if block_given?
   end
 
@@ -43,7 +48,15 @@ class Filter
     @branches << [matcher, action]
   end
 
+  def after interval, &block
+    fail "only one timeout may be specified" if @deadline
+    @deadline = Time.now + interval
+    @deadline_action = block
+    EM.add_timer(interval) { @actor.wakeup }
+  end
+
   def apply msgs
+    return :timeout, @deadline, @deadline_action if @deadline && @deadline <= Time.now
     msgs.each_with_index do |msg,i|
       @branches.each do |m,a|
         return i,m,a if m === msg

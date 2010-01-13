@@ -64,47 +64,51 @@ class BasicTest < Test::Unit::TestCase
     EM.run_block do
       sched.run
       a << :foo
-      sched.run
     end
 
     assert_equal :foo, got
   end
 
   def test_filter
-    got = nil
+    results = []
 
     a = Refract::Actor.new 'consumer' do |me|
-      got = me.receive
-      me.receive { |f| f.when(Object) { |x| got = x } }
-      got = me.receive Symbol
+      results << me.receive
+      me.receive { |f| f.when(Object) { |x| results << x } }
+      results << me.receive(Symbol)
       me.receive String
       me.receive Integer
       me.receive do |f|
         f.when(String) { |x| fail }
-        f.when(Symbol) { |x| got = x }
+        f.when(Symbol) { |x| results << x }
         f.when(Object) { |x| fail }
       end
       me.receive true
-      got = :done
+      results << :done
     end
 
     sched = Refract::Scheduler.new
     sched << a
 
-    sendit = lambda do |msg,expect|
-      a << msg
+    EM.run_block do
       sched.run
-      assert_equal expect, got
+      [:foo, :bar, 1, :baz, 'string', :boo, true].each { |x| a << x }
+    end
+    assert_equal [:foo, :bar, :baz, :boo, :done], results
+  end
+
+  def test_timeout
+    timed_out = false
+    a = Refract::Actor.new 'waiter' do |me|
+      me.receive do |f|
+        f.after(1.0) { timed_out = true; EM.stop }
+      end
     end
 
-    EM.run_block do
-      sendit[:foo, :foo]
-      sendit[:bar, :bar]
-      sendit[1, :bar]
-      sendit[:baz, :baz]
-      sendit['string', :baz]
-      sendit[:boo, :boo]
-      sendit[true, :done]
-    end
+    sched = Refract::Scheduler.new
+    sched << a
+
+    EM.run { sched.run }
+    assert_equal true, timed_out
   end
 end

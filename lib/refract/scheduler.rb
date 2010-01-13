@@ -7,12 +7,14 @@ class Scheduler
   def initialize
     @runqueue = []
     @cc = nil
+    @tickled = false
   end
 
   def << actor
     l :scheduler, :<<, actor
     actor.scheduler = self
     @runqueue << actor
+    tickle
   end
 
   def switch
@@ -25,6 +27,13 @@ class Scheduler
     callcc do |cc|
       @cc = cc
       switch
+    end
+  end
+
+  def tickle
+    if !@tickled
+      @tickled = true
+      EM.next_tick { @tickled = false; run }
     end
   end
 end
