@@ -47,8 +47,8 @@ class Actor
     @mailbox << msg
   end
 
-  def receive &block
-    @mailbox.receive(&block)
+  def receive default_matcher=Object, &block
+    @mailbox.receive(default_matcher, &block)
   end
 
   def inspect

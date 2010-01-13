@@ -17,17 +17,39 @@ class Mailbox
     end
   end
 
-  def receive &block
+  def receive default_matcher, &block
+    block ||= lambda { |f| f.when(default_matcher) { |x| x } }
+    filter = Refract::Filter.new &block
     while true
-      msg_index = @messages.find_index { |x| !block_given? || yield(x) }
+      msg_index, matcher, action = filter.apply @messages
       if msg_index
-        l :received, @actor, @messages[msg_index]
-        return @messages.delete_at(msg_index)
+        l :received, @actor, matcher, @messages[msg_index]
+        return action[@messages.delete_at(msg_index)]
       else
         @sleeping = true
         @actor.sleep
       end
     end
+  end
+end
+
+class Filter
+  def initialize
+    @branches = []
+    yield self if block_given?
+  end
+
+  def when matcher, &action
+    @branches << [matcher, action]
+  end
+
+  def apply msgs
+    msgs.each_with_index do |msg,i|
+      @branches.each do |m,a|
+        return i,m,a if m === msg
+      end
+    end
+    nil
   end
 end
 

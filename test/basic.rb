@@ -59,4 +59,40 @@ class BasicTest < Test::Unit::TestCase
     sched.run
     assert_equal :foo, got
   end
+
+  def test_filter
+    got = nil
+
+    a = Refract::Actor.new 'consumer' do |me|
+      got = me.receive
+      me.receive { |f| f.when(Object) { |x| got = x } }
+      got = me.receive Symbol
+      me.receive String
+      me.receive Integer
+      me.receive do |f|
+        f.when(String) { |x| fail }
+        f.when(Symbol) { |x| got = x }
+        f.when(Object) { |x| fail }
+      end
+      me.receive true
+      got = :done
+    end
+
+    sched = Refract::Scheduler.new
+    sched << a
+
+    sendit = lambda do |msg,expect|
+      a << msg
+      sched.run
+      assert_equal expect, got
+    end
+
+    sendit[:foo, :foo]
+    sendit[:bar, :bar]
+    sendit[1, :bar]
+    sendit[:baz, :baz]
+    sendit['string', :baz]
+    sendit[:boo, :boo]
+    sendit[true, :done]
+  end
 end
