@@ -19,7 +19,7 @@ class Mailbox
 
   def receive default_matcher, &block
     block ||= lambda { |f| f.when(default_matcher) { |x| x } }
-    filter = Refract::Filter.new &block
+    filter = Refract::Filter.new(&block)
     while true
       msg_index, matcher, action = filter.apply @messages
       if msg_index
