@@ -5,14 +5,14 @@ class Mailbox
 
   def initialize actor
     @messages = []
-    @blocked = false
+    @sleeping = false
     @actor = actor
   end
 
   def << msg
     @messages << msg
-    if @blocked
-      @blocked = false
+    if @sleeping
+      @sleeping = false
       @actor.wakeup
     end
   end
@@ -24,8 +24,8 @@ class Mailbox
         l :received, @actor, @messages[msg_index]
         return @messages.delete_at(msg_index)
       else
-        @blocked = true
-        @actor.block
+        @sleeping = true
+        @actor.sleep
       end
     end
   end

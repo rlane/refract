@@ -32,8 +32,8 @@ class Actor
     @cc.call
   end
 
-  def block
-    l :block, self
+  def sleep
+    l :sleep, self
     switch_out
   end
 
