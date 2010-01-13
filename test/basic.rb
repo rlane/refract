@@ -46,4 +46,17 @@ class BasicTest < Test::Unit::TestCase
 
     assert_equal 38, c
   end
+
+  def test_block
+    got = nil
+    a = Refract::Actor.new 'blocker' do |me|
+      got = me.receive
+    end
+    sched = Refract::Scheduler.new
+    sched << a
+    sched.run
+    a << :foo
+    sched.run
+    assert_equal :foo, got
+  end
 end

@@ -5,7 +5,7 @@ class Actor
   attr_accessor :scheduler
 
   def initialize name
-    @mailbox = []
+    @mailbox = Refract::Mailbox.new self
     @name = name
 
     callcc { |cc| @cc = cc; return }
@@ -17,10 +17,14 @@ class Actor
     @scheduler.switch
   end
 
+  def switch_out
+    callcc { |cc| @cc = cc; @scheduler.switch }
+  end
+
   def yield
     l :yield, self
     @scheduler << self
-    callcc { |cc| @cc = cc; @scheduler.switch }
+    switch_out
   end
 
   def resume
@@ -28,22 +32,23 @@ class Actor
     @cc.call
   end
 
+  def block
+    l :block, self
+    switch_out
+  end
+
+  def wakeup
+    l :wakeup, self
+    @scheduler << self
+  end
+
   def << msg
     l :send, self, msg
     @mailbox << msg
   end
 
-  def receive
-    while true
-      msg_index = @mailbox.find_index { |x| !block_given? || yield(x) }
-      if msg_index
-        l :received, self, @mailbox[msg_index]
-        return @mailbox.slice!(msg_index)
-      else
-        l :blocked, self
-        self.yield
-      end
-    end
+  def receive &block
+    @mailbox.receive(&block)
   end
 
   def inspect
