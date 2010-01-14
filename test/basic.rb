@@ -2,6 +2,7 @@ require 'rubygems'
 require 'test/unit'
 require 'eventmachine'
 require 'refract'
+require 'case'
 
 class BasicTest < Test::Unit::TestCase
   def test_receive
@@ -110,5 +111,40 @@ class BasicTest < Test::Unit::TestCase
 
     EM.run { sched.run }
     assert_equal true, timed_out
+  end
+
+  def test_tcp_connect
+    port = 3943
+
+    a = Refract::Actor.new 'reverser' do |me|
+      s = Refract.tcp '127.0.0.1', port, me
+      while true
+        me.receive do |f|
+          f.when(Case[:data, s, String]) { |_,_,data| s << data.reverse }
+          f.when(Case[:closed, s]) { |x| EM.stop }
+          f.when(Object) { |x| fail "unexpected #{x.inspect}" }
+        end
+      end
+    end
+
+    sched = Refract::Scheduler.new
+    sched << a
+
+    $received = nil
+
+    EM.run do
+      EM.start_server '127.0.0.1', port do |c|
+        c.send_data "reversible"
+
+        def c.receive_data data
+          $received = data
+          EM.stop
+        end
+      end
+
+      sched.run
+    end
+
+    assert_equal "reversible".reverse, $received
   end
 end
