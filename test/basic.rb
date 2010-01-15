@@ -147,4 +147,42 @@ class BasicTest < Test::Unit::TestCase
 
     assert_equal "reversible".reverse, $received
   end
+
+  def test_tcp_server
+    port = 3943
+
+    a = Refract::Actor.new 'reverser' do |me|
+      s = nil
+      while true
+        me.receive do |f|
+          f.when(Case[:accept]) { |_,_,_s| s = _s  }
+          f.when(Case[:data, s, String]) { |_,_,data| s << data.reverse }
+          f.when(Case[:closed, s]) { |x| }
+          f.when(Object) { |x| fail "unexpected #{x.inspect}" }
+        end
+      end
+    end
+
+    sched = Refract::Scheduler.new
+    sched << a
+
+    $received = nil
+
+    EM.run do
+      Refract.tcp_server 'localhost', port, a
+
+      EM.connect '127.0.0.1', port do |c|
+        c.send_data 'reversible'
+
+        def c.receive_data data
+          $received = data
+          EM.stop
+        end
+      end
+
+      sched.run
+    end
+
+    assert_equal 'reversible'.reverse, $received
+  end
 end
