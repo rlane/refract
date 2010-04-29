@@ -48,6 +48,10 @@ class Filter
     @branches << [matcher, action]
   end
 
+  def default &action
+    self.when Object, &action
+  end
+
   def after interval, &block
     fail "only one timeout may be specified" if @deadline
     @deadline = Time.now + interval
